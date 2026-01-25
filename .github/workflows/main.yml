@@ -1,29 +1,41 @@
-name: Build WF
+name: Vprofile CICD Workflow
+
 on:
   push:
-    branches:
-      - main
- # pull_request:
-  #  branches:
-   #   - main
+    branches: bugfix-901
+
+  pull_request:
+    branches: bugfix-901
+
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 2 * * *"   # nightly run at 2 AM UTC
+
 jobs:
-  build:
+  Build:
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Maven Build
         run: mvn install
-  Testing: 
+
+
+  Testing:
     runs-on: ubuntu-latest
-    needs: build
+    needs: Build
     steps:
       - name: Code checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Maven Test
+      - name: Run tests on main branch
         run: mvn test
 
-      - name: checkstyle test
+      - name: Checkstyle
         run: mvn checkstyle:checkstyle
