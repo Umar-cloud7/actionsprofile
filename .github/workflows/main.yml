@@ -85,6 +85,14 @@ jobs:
         uses: actions/checkout@v5
         with:
          fetch-depth: 0
+        
+      - name: Debug Secret Length
+        run: |
+               echo "Access key length:"
+               echo "${#AWS_ACCESS_KEY_ID}"
+        env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
