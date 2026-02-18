@@ -1,0 +1,26 @@
+GitHub actions
+ -->>
+    Build Docker Image & Upload to AWS ECR
+     -->>
+        Create AWS ECR Repo
+
+        Create IAM Access Keys and store it in GitHub Secrets
+         -->>
+            Create User name as actions-ecr
+            Attach policies
+             -->>
+                AmazonEC2ContainerRegisteryFullAccess
+            Create Access Key
+             -->>
+                Store it in GitHub Secrets
+                 -->>
+                    Store it in Environment Secrets named as production
+                    Make an Environment Variable named as AWS_REGION and Value -> ap-south-1
+        
+        Create Dockerfile
+        -->>
+            Already present in actionsprofile/Docker-files/app/multistage/
+    
+        Create Job to Build and Publish/Upload Docker Image
+        -->>
+            Add Jobs in main.yml
