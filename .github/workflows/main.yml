@@ -1,4 +1,113 @@
-TERRAFORM:
+name: Build WF
+on:
+  push:
+    branches:
+      - main
+ # pull_request:
+  #  branches:
+ #     - main
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Maven Build
+        run: mvn install
+      - name: Upload Build Artifacts (WAR)
+        uses: actions/upload-artifact@v4
+        with:
+          name: vprofile-app
+          path: target/*.war
+      - name: Notify if Build Fails
+        if: failure()
+        run: echo "Build failed! Please check the logs."
+  Testing: 
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Run Test on main branch
+        if: github.ref == 'refs/heads/main'
+        run: mvn test
+      - name: checkstyle test
+        if: github.ref == 'refs/heads/main'
+        run: mvn checkstyle:checkstyle
+      
+      - name: Run Test on main branch
+        if: github.ref != 'refs/heads/main'
+        run: echo 'Skipping unit tests and code analysis for non-main branches'
+  
+  Security-Scan:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Run Trivy Security Scan
+        uses: aquasecurity/trivy-action@master
+        with: 
+          scan-type: fs
+          scan-ref : .
+          format: 'json'
+          exit-code: '0'
+          output: 'trivy-report.json'
+      - name: Upload Trivy scan result as artifacts (WAR)
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results
+          path: trivy-report.json
+    
+  BUILD_AND_PUSH:
+     name: BUILD_AND_PUSH
+     runs-on: ubuntu-latest
+     needs: [build, Testing, Security-Scan]
+     if:  github.ref == 'refs/heads/main'
+     environment: production
+     steps: 
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+         fetch-depth: 0
+        
+      - name: Debug Secret Length
+        run: |
+               echo "Access key length:"
+               echo "${#AWS_ACCESS_KEY_ID}"
+        env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f Docker-files/app/multistage/Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  TERRAFORM:
     name: TERRAFORM
     runs-on: ubuntu-latest
     needs: [BUILD_AND_PUSH]
@@ -37,9 +146,7 @@ TERRAFORM:
       - name: Get EC2 App Server IP
         id: tf_output
         working-directory: terraform
-        run: |
-          echo "ec2_ip=$(terraform output -raw app_private_ip)" >> $GITHUB_OUTPUT
-
+        run: echo "ec2_ip=$(terraform output -raw app_private_ip)" >> $GITHUB_OUTPUT
   DEPLOY:
     name: DEPLOY
     runs-on: ubuntu-latest
@@ -71,24 +178,11 @@ TERRAFORM:
           IMAGE_TAG: ${{ github.sha }}
           APP_IP: ${{ needs.TERRAFORM.outputs.ec2_ip }}
         run: |
-          ssh -o StrictHostKeyChecking=no ec2-user@$APP_IP << EOF
-            # Login to ECR
-            aws ecr get-login-password --region ap-south-1 | \
-              docker login --username AWS --password-stdin $ECR_REGISTRY
-
-            # Pull latest image
-            docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-            # Stop old container if running
-            docker stop vproapp || true
-            docker rm vproapp || true
-
-            # Run new container
-            docker run -d \
-              --name vproapp \
-              --restart always \
-              -p 8080:8080 \
-              $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-            
-            echo "Deployment complete!"
-          EOF
+          ssh -o StrictHostKeyChecking=no ec2-user@$APP_IP \
+            "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $ECR_REGISTRY && \
+             docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG && \
+             docker stop vproapp || true && \
+             docker rm vproapp || true && \
+             docker run -d --name vproapp --restart always -p 8080:8080 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG && \
+             echo Deployment complete"
+        
