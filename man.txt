@@ -24,3 +24,8 @@ GitHub actions
         Create Job to Build and Publish/Upload Docker Image
         -->>
             Add Jobs in main.yml
+         
+        Commit to GitHub
+        -->>
+            It will automatic trigger the workflow and publish docker Image
+            

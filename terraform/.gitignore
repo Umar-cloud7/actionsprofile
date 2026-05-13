@@ -1,0 +1,36 @@
+# ============================================================
+# .gitignore for Terraform project
+# ============================================================
+
+# Local .terraform directory
+.terraform/
+.terraform.lock.hcl
+
+# State files — NEVER commit these (contain secrets)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Variable files with real values — NEVER commit
+terraform.tfvars
+*.auto.tfvars
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Sensitive override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# SSH keys — NEVER commit
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# OS files
+.DS_Store
+Thumbs.db
