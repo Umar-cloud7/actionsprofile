@@ -15,7 +15,7 @@ terraform {
 
   # Remote state storage — keeps your state safe in S3
   backend "s3" {
-    bucket = "vprofile-terraform-state"
+    bucket = "artifacts-umar"
     key    = "vprofile/terraform.tfstate"
     region = "ap-south-1"
   }
@@ -589,10 +589,10 @@ resource "aws_lb_listener" "http" {
 # ============================================================
 
 resource "aws_s3_bucket" "artifacts" {
-  bucket = "${var.project_name}-artifacts-${var.environment}"
+  bucket = "${var.project_name}-artifacts-umar-${var.environment}"
 
   tags = {
-    Name        = "${var.project_name}-artifacts"
+    Name        = "${var.project_name}-artifacts-umar"
     Project     = var.project_name
     Environment = var.environment
   }
