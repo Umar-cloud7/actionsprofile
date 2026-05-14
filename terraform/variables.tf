@@ -66,10 +66,10 @@ variable "cicd_instance_type" {
   default     = "t3.medium"
 }
 
-variable "public_key_path" {
+variable "public_key" {
   description = "Path to your SSH public key file"
   type        = string
-  
+
 }
 
 # ---- RDS ----
