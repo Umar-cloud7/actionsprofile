@@ -375,7 +375,7 @@ resource "aws_security_group" "cicd_sg" {
 
 resource "aws_key_pair" "vprofile_key" {
   key_name   = "${var.project_name}-key"
-  public_key = file(var.public_key_path)
+  public_key = var.public_key
 
   tags = {
     Project = var.project_name
