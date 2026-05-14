@@ -144,7 +144,7 @@ jobs:
 
       - name: Terraform Plan
         working-directory: terraform
-        run: terraform plan -var="db_password=${{ secrets.DB_PASSWORD }}" -out=tfplan
+        run: terraform plan -var="db_password=${{ secrets.DB_PASSWORD }}" -out=tfplan -input=false
 
       - name: Terraform Apply
         working-directory: terraform
