@@ -63,7 +63,7 @@ variable "app_instance_type" {
 variable "cicd_instance_type" {
   description = "Instance type for Jenkins + Nexus + SonarQube (needs at least t3.medium)"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.small"
 }
 
 variable "public_key" {
