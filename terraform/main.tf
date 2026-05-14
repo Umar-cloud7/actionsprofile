@@ -239,7 +239,7 @@ resource "aws_security_group" "nginx_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
+    cidr_blocks = ["47.11.45.87/32"]
     description = "SSH from your IP only"
   }
 
@@ -274,7 +274,7 @@ resource "aws_security_group" "app_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
+    cidr_blocks = ["47.11.45.87/32"]
     description = "SSH from your IP only"
   }
 
@@ -328,7 +328,7 @@ resource "aws_security_group" "cicd_sg" {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
+    cidr_blocks = []
     description = "Jenkins UI"
   }
 
@@ -336,7 +336,7 @@ resource "aws_security_group" "cicd_sg" {
     from_port   = 8081
     to_port     = 8081
     protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
+    cidr_blocks = ["47.11.45.87/32"]
     description = "Nexus UI"
   }
 
@@ -344,7 +344,7 @@ resource "aws_security_group" "cicd_sg" {
     from_port   = 9000
     to_port     = 9000
     protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
+    cidr_blocks = ["47.11.45.87/32"]
     description = "SonarQube UI"
   }
 
@@ -352,7 +352,7 @@ resource "aws_security_group" "cicd_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
+    cidr_blocks = ["47.11.45.87/32"]
     description = "SSH from your IP only"
   }
 
