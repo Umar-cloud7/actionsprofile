@@ -146,7 +146,7 @@ jobs:
       - name: Get EC2 App Server IP
         id: tf_output
         working-directory: terraform
-        run: echo "ec2_ip=$(terraform output -raw app_private_ip)" >> $GITHUB_OUTPUT
+        run: echo "ec2_ip=$(terraform output -raw 47.11.45.87)" >> $GITHUB_OUTPUT
   DEPLOY:
     name: DEPLOY
     runs-on: ubuntu-latest
