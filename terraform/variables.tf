@@ -43,6 +43,7 @@ variable "private_subnet_cidrs" {
 variable "your_ip" {
   description = "Your public IP for SSH access — format: x.x.x.x/32"
   type        = string
+  default = "47.11.45.87/32"
   # Set this in terraform.tfvars — never hardcode your IP here
 }
 
