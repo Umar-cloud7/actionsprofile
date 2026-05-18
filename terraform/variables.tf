@@ -51,7 +51,7 @@ variable "your_ip" {
 variable "web_instance_type" {
   description = "Instance type for Nginx web server"
   type        = string
-  default     = "t3.micro"
+  default     = "t2.micro"
 }
 
 variable "app_instance_type" {
@@ -63,7 +63,7 @@ variable "app_instance_type" {
 variable "cicd_instance_type" {
   description = "Instance type for Jenkins + Nexus + SonarQube (needs at least t3.medium)"
   type        = string
-  default     = "t3.micro"
+  default     = "t2.micro"
 }
 
 variable "public_key" {
