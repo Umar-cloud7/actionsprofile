@@ -57,7 +57,7 @@ variable "web_instance_type" {
 variable "app_instance_type" {
   description = "Instance type for Tomcat app server"
   type        = string
-  default     = "t3.small"
+  default     = "t2.micro"
 }
 
 variable "cicd_instance_type" {
