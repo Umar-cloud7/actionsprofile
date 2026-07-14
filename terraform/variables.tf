@@ -53,7 +53,12 @@ variable "instance_type" {
   type        = string
   default     = "t3.medium"
 }
-
+// ...existing code...
+variable "public_key" {
+  type        = string
+  description = "Path to or contents of the public SSH key"
+}
+ // ...existing code...
 # ---- RDS ----
 
 variable "db_instance_class" {
