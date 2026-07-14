@@ -185,175 +185,52 @@ resource "aws_route_table_association" "private" {
 # ============================================================
 # SECURITY GROUPS
 # ============================================================
-
-# ALB Security Group — accepts HTTP/HTTPS from internet
-resource "aws_security_group" "alb_sg" {
-  name        = "${var.project_name}-alb-sg"
-  description = "Allow HTTP/HTTPS inbound to ALB"
+# Consolidated Security Group
+resource "aws_security_group" "all_in_one_sg" {
+  name        = "${var.project_name}-all-in-one-sg"
+  description = "Allow web, app, and admin access"
   vpc_id      = aws_vpc.vprofile_vpc.id
 
+  # HTTP/HTTPS for Nginx
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTP from internet"
   }
-
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTPS from internet"
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name    = "${var.project_name}-alb-sg"
-    Project = var.project_name
-  }
-}
-
-# Nginx (Web tier) Security Group — accepts traffic only from ALB
-resource "aws_security_group" "nginx_sg" {
-  name        = "${var.project_name}-nginx-sg"
-  description = "Allow traffic from ALB only"
-  vpc_id      = aws_vpc.vprofile_vpc.id
-
-  ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
-    description     = "HTTP from ALB only"
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
-    description = "SSH from your IP only"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name    = "${var.project_name}-nginx-sg"
-    Project = var.project_name
-  }
-}
-
-# Tomcat (App tier) Security Group — accepts traffic only from Nginx
-resource "aws_security_group" "app_sg" {
-  name        = "${var.project_name}-app-sg"
-  description = "Allow traffic from Nginx only"
-  vpc_id      = aws_vpc.vprofile_vpc.id
-
-  ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.nginx_sg.id]
-    description     = "Tomcat from Nginx only"
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.your_ip]
-    description = "SSH from your IP only"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name    = "${var.project_name}-app-sg"
-    Project = var.project_name
-  }
-}
-
-# MySQL (DB tier) Security Group — accepts traffic only from App tier
-resource "aws_security_group" "db_sg" {
-  name        = "${var.project_name}-db-sg"
-  description = "Allow MySQL from App tier only"
-  vpc_id      = aws_vpc.vprofile_vpc.id
-
-  ingress {
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app_sg.id]
-    description     = "MySQL from App tier only"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name    = "${var.project_name}-db-sg"
-    Project = var.project_name
-  }
-}
-
-# CI/CD Tools Security Group — Jenkins, Nexus, SonarQube
-resource "aws_security_group" "cicd_sg" {
-  name        = "${var.project_name}-cicd-sg"
-  description = "Allow access to CI/CD tools"
-  vpc_id      = aws_vpc.vprofile_vpc.id
-
+  # CI/CD tools access
   ingress {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = []
-    description = "Jenkins UI"
+    cidr_blocks = ["0.0.0.0/0"] # Jenkins
   }
-
   ingress {
     from_port   = 8081
     to_port     = 8081
     protocol    = "tcp"
-    cidr_blocks = ["47.11.45.87/32"]
-    description = "Nexus UI"
+    cidr_blocks = [var.your_ip] # Nexus
   }
-
   ingress {
     from_port   = 9000
     to_port     = 9000
     protocol    = "tcp"
-    cidr_blocks = ["47.11.45.87/32"]
-    description = "SonarQube UI"
+    cidr_blocks = [var.your_ip] # SonarQube
   }
 
+  # SSH
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["47.11.45.87/32"]
-    description = "SSH from your IP only"
+    cidr_blocks = [var.your_ip]
   }
 
   egress {
@@ -362,117 +239,29 @@ resource "aws_security_group" "cicd_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = {
-    Name    = "${var.project_name}-cicd-sg"
-    Project = var.project_name
-  }
 }
 
-# ============================================================
-# KEY PAIR
-# ============================================================
-
-resource "aws_key_pair" "vprofile_key" {
-  key_name   = "${var.project_name}-key"
-  public_key = var.public_key
-
-  tags = {
-    Project = var.project_name
-  }
-}
-
-# ============================================================
-# EC2 INSTANCES
-# ============================================================
-
-# Nginx Web Server — public subnet
-resource "aws_instance" "nginx" {
+# Single EC2 Instance
+resource "aws_instance" "all_in_one" {
   ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = var.web_instance_type
+  instance_type          = "t3.medium" # Recommended for multiple services
   subnet_id              = aws_subnet.public[0].id
-  vpc_security_group_ids = [aws_security_group.nginx_sg.id]
+  vpc_security_group_ids = [aws_security_group.all_in_one_sg.id]
   key_name               = aws_key_pair.vprofile_key.key_name
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
-  user_data = base64encode(templatefile("${path.module}/scripts/nginx_setup.sh", {
-    app_private_ip = aws_instance.app.private_ip
-  }))
+  # You will need to combine your scripts into one entrypoint script
+  user_data = base64encode(file("${path.module}/scripts/setup_all.sh"))
 
   root_block_device {
-    volume_size           = 20
+    volume_size           = 40 # Increased to accommodate all tools
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true
   }
 
   tags = {
-    Name        = "${var.project_name}-nginx"
-    Project     = var.project_name
-    Environment = var.environment
-    Role        = "web"
-  }
-
-  depends_on = [aws_instance.app]
-}
-
-# Tomcat App Server — private subnet
-resource "aws_instance" "app" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = var.app_instance_type
-  subnet_id              = aws_subnet.private[0].id
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
-  key_name               = aws_key_pair.vprofile_key.key_name
-  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
-
-  user_data = base64encode(templatefile("${path.module}/scripts/app_setup.sh", {
-    db_endpoint = aws_db_instance.mysql.endpoint
-    db_name     = var.db_name
-    db_user     = var.db_username
-    db_password = var.db_password
-    nexus_url   = "http://${aws_instance.cicd.private_ip}:8081"
-  }))
-
-  root_block_device {
-    volume_size           = 20
-    volume_type           = "gp3"
-    encrypted             = true
-    delete_on_termination = true
-  }
-
-  tags = {
-    Name        = "${var.project_name}-app"
-    Project     = var.project_name
-    Environment = var.environment
-    Role        = "app"
-  }
-
-  depends_on = [aws_db_instance.mysql]
-}
-
-# CI/CD Server — Jenkins + Nexus + SonarQube (public subnet)
-resource "aws_instance" "cicd" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = var.cicd_instance_type  # t3.medium minimum for Nexus+Sonar
-  subnet_id              = aws_subnet.public[0].id
-  vpc_security_group_ids = [aws_security_group.cicd_sg.id]
-  key_name               = aws_key_pair.vprofile_key.key_name
-  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
-
-  user_data = base64encode(file("${path.module}/scripts/cicd_setup.sh"))
-
-  root_block_device {
-    volume_size           = 30   # Nexus needs more space for artifacts
-    volume_type           = "gp3"
-    encrypted             = true
-    delete_on_termination = true
-  }
-
-  tags = {
-    Name        = "${var.project_name}-cicd"
-    Project     = var.project_name
-    Environment = var.environment
-    Role        = "cicd"
+    Name = "${var.project_name}-all-in-one"
   }
 }
 
