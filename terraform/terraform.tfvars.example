@@ -3,7 +3,7 @@
 # ADD THIS FILE TO .gitignore — never commit passwords
 # ============================================================
 
-aws_region   = "ap-south-1"
+aws_region   = "us-east-1"
 project_name = "vprofile"
 environment  = "dev"
 
