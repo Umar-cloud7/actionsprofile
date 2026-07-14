@@ -148,7 +148,7 @@ resource "aws_instance" "all_in_one" {
   key_name               = aws_key_pair.vprofile_key.key_name
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
-  user_data = base64encode(file("${path.module}/scripts/setup_all.sh"))
+  user_data = base64encode(file("${path.module}/scripts/app_setup.sh, cicd_setup.sh, jenkins_setup.sh, nexus_setup.sh, sonarqube_setup.sh, ngin_setup.sh"))
 
   root_block_device {
     volume_size           = 40
