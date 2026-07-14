@@ -17,7 +17,7 @@ terraform {
   backend "s3" {
     bucket = "artifacts-umar"
     key    = "vprofile/terraform.tfstate"
-    region = "ap-south-1"
+    region = "us-east-1"
   }
 }
 
@@ -239,7 +239,7 @@ resource "aws_security_group" "nginx_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["47.11.45.87/32"]
+    cidr_blocks = [var.your_ip]
     description = "SSH from your IP only"
   }
 
@@ -274,7 +274,7 @@ resource "aws_security_group" "app_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["47.11.45.87/32"]
+    cidr_blocks = [var.your_ip]
     description = "SSH from your IP only"
   }
 
