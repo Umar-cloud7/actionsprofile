@@ -144,7 +144,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+          aws-region: us-east-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -160,7 +160,7 @@ jobs:
         run: |
           terraform plan \
             -var="db_password=${{ secrets.DB_PASSWORD }}" \
-            -var="your_ip=47.11.45.87/32" \
+            -var="your_ip=${{ secrets.YOUR_IP }}" \
             -var="public_key=${{ secrets.SSH_PUBLIC_KEY }}" \
             -out=tfplan -input=false
 
@@ -185,7 +185,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -205,7 +205,7 @@ jobs:
           APP_IP: ${{ needs.TERRAFORM.outputs.ec2_ip }}
         run: |
           ssh -o StrictHostKeyChecking=no ec2-user@$APP_IP \
-            "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $ECR_REGISTRY && \
+            "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY && \
              docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG && \
              docker stop vproapp || true && \
              docker rm vproapp || true && \
