@@ -15,131 +15,71 @@ terraform {
 }
 
 provider "aws" { region = var.aws_region }
-# --- VPC Definition ---
+
+# --- VPC ---
 resource "aws_vpc" "vprofile_vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
-
-  tags = {
-    Name = "${var.project_name}-vpc"
-  }
-}
-# --- Security Group ---
-resource "aws_security_group" "all_in_one_sg" {
-  name        = "${var.project_name}-all-in-one-sg"
-  description = "Access for Web, App, and CI/CD tools"
-  vpc_id      = aws_vpc.vprofile_vpc.id
-
-  # HTTP
-  ingress { 
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] 
-  }
-  
-  # Jenkins
-  ingress { 
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] 
-  }
-  
-  # Nexus
-  ingress { 
-    from_port   = 8081
-    to_port     = 8081
-    protocol    = "tcp"
-    cidr_blocks = [var.your_ip] 
-  }
-  
-  # SonarQube
-  ingress { 
-    from_port   = 9000
-    to_port     = 9000
-    protocol    = "tcp"
-    cidr_blocks = [var.your_ip] 
-  }
-  
-  # SSH
-  ingress { 
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.your_ip] 
-  }
-
-  egress { 
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"] 
-  }
+  tags = { Name = "${var.project_name}-vpc" }
 }
 
-# --- Key Pair ---
-resource "aws_key_pair" "vprofile_key" {
-  key_name   = "vprofile-key"
-  public_key = file(var.public_key)
-}
-# 1. Fetch the Amazon Linux 2023 AMI
-data "aws_ami" "amazon_linux" {
-  most_recent = true
-  owners      = ["amazon"]
-  filter {
-    name   = "name"
-    values = ["al2023-ami-2023*-x86_64"]
-  }
-}
-
-# 2. Define your Subnet (Assuming you have a way to define subnets in your config)
+# --- Subnets ---
+data "aws_availability_zones" "available" {}
 resource "aws_subnet" "public" {
   count             = 2
   vpc_id            = aws_vpc.vprofile_vpc.id
   cidr_block        = var.public_subnet_cidrs[count.index]
   availability_zone = element(data.aws_availability_zones.available.names, count.index)
   map_public_ip_on_launch = true
-
   tags = { Name = "${var.project_name}-public-subnet-${count.index}" }
 }
 
-# 3. Define the IAM Instance Profile
+# --- Security Group ---
+resource "aws_security_group" "all_in_one_sg" {
+  name        = "${var.project_name}-all-in-one-sg"
+  vpc_id      = aws_vpc.vprofile_vpc.id
+  ingress { from_port = 80; to_port = 80; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
+  ingress { from_port = 8080; to_port = 8080; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
+  ingress { from_port = 8081; to_port = 8081; protocol = "tcp"; cidr_blocks = [var.your_ip] }
+  ingress { from_port = 9000; to_port = 9000; protocol = "tcp"; cidr_blocks = [var.your_ip] }
+  ingress { from_port = 22; to_port = 22; protocol = "tcp"; cidr_blocks = [var.your_ip] }
+  egress  { from_port = 0; to_port = 0; protocol = "-1"; cidr_blocks = ["0.0.0.0/0"] }
+}
+
+# --- IAM ---
+resource "aws_iam_role" "ec2_role" {
+  name = "${var.project_name}-ec2-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ec2.amazonaws.com" } }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_policy" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
   role = aws_iam_role.ec2_role.name
 }
 
-# Helper Data Source for AZs
-data "aws_availability_zones" "available" {}
-
-# Assuming you already have an aws_iam_role.ec2_role defined elsewhere, 
-# if not, you'll need to define that as well.
-# --- IAM Role for EC2 ---
-resource "aws_iam_role" "ec2_role" {
-  name = "${var.project_name}-ec2-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-# --- Optional: Attach a policy if your instance needs AWS access ---
-resource "aws_iam_role_policy_attachment" "ec2_policy" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
 # --- EC2 Instance ---
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]n  filter {
+    name   = "name"
+    values = ["al2023-ami-2023*-x86_64"]
+  }
+}
+
+resource "aws_key_pair" "vprofile_key" {
+  key_name   = "vprofile-key"
+  public_key = file(var.public_key)
+}
+
 resource "aws_instance" "all_in_one" {
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
@@ -148,17 +88,12 @@ resource "aws_instance" "all_in_one" {
   key_name               = aws_key_pair.vprofile_key.key_name
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
-user_data = base64encode(join("\n", [
-  file("${path.module}/scripts/app_setup.sh"),
-  file("${path.module}/scripts/cicd_setup.sh"),
-  file("${path.module}/scripts/nginx_setup.sh")
-]))
-  root_block_device {
-    volume_size           = 40
-    volume_type           = "gp3"
-    encrypted             = true
-    delete_on_termination = true
-  }
+  # Ensure these files exist in your repository at terraform/scripts/
+  user_data = base64encode(join("\n", [
+    file("${path.module}/scripts/app_setup.sh"),
+    file("${path.module}/scripts/cicd_setup.sh"),
+    file("${path.module}/scripts/nginx_setup.sh")
+  ]))
 
   tags = { Name = "${var.project_name}-all-in-one" }
 }
