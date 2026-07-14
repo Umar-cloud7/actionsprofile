@@ -84,7 +84,38 @@ resource "aws_key_pair" "vprofile_key" {
   key_name   = "vprofile-key"
   public_key = file(var.public_key)
 }
+# 1. Fetch the Amazon Linux 2023 AMI
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023*-x86_64"]
+  }
+}
 
+# 2. Define your Subnet (Assuming you have a way to define subnets in your config)
+resource "aws_subnet" "public" {
+  count             = 2
+  vpc_id            = aws_vpc.vprofile_vpc.id
+  cidr_block        = var.public_subnet_cidrs[count.index]
+  availability_zone = element(data.aws_availability_zones.available.names, count.index)
+  map_public_ip_on_launch = true
+
+  tags = { Name = "${var.project_name}-public-subnet-${count.index}" }
+}
+
+# 3. Define the IAM Instance Profile
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "${var.project_name}-ec2-profile"
+  role = aws_iam_role.ec2_role.name
+}
+
+# Helper Data Source for AZs
+data "aws_availability_zones" "available" {}
+
+# Assuming you already have an aws_iam_role.ec2_role defined elsewhere, 
+# if not, you'll need to define that as well.
 # --- EC2 Instance ---
 resource "aws_instance" "all_in_one" {
   ami                    = data.aws_ami.amazon_linux.id
