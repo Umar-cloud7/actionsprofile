@@ -116,6 +116,29 @@ data "aws_availability_zones" "available" {}
 
 # Assuming you already have an aws_iam_role.ec2_role defined elsewhere, 
 # if not, you'll need to define that as well.
+# --- IAM Role for EC2 ---
+resource "aws_iam_role" "ec2_role" {
+  name = "${var.project_name}-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# --- Optional: Attach a policy if your instance needs AWS access ---
+resource "aws_iam_role_policy_attachment" "ec2_policy" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
 # --- EC2 Instance ---
 resource "aws_instance" "all_in_one" {
   ami                    = data.aws_ami.amazon_linux.id
